@@ -1,13 +1,11 @@
-# Use the official Python base image
-FROM python:3.9
+# Use an official Python runtime as a parent image
+FROM python:3.10
 
-# Update system packages
-RUN apt-get update && apt-get install -y libssl-dev && apt-get install -y apt-utils && apt-get -y install swig
-RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
-RUN apt-get install poppler-utils -y
-
-# Set the working directory inside the container
+# Set the working directory in the container
 WORKDIR .
+
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
+RUN apt-get install libgl1-mesa-glx
 
 # Copy the requirements file into the container
 COPY requirements.txt .
@@ -15,12 +13,11 @@ COPY requirements.txt .
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the current directory contents into the container at /app
+# Copy the rest of the application code into the container
 COPY . .
 
-RUN dpkg -i libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
-# Expose the port that Uvicorn will run on
+# Expose the port that your FastAPI app will run on
 EXPOSE 8000
 
-# Define the command to run your Uvicorn app
+# Define the command to run your FastAPI app
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
