@@ -1,14 +1,12 @@
-# fastapi_app.py
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.responses import FileResponse
 import subprocess
 import os
 
-
 def format_folder(folder_path):
     folder_name = 'temp'
     if not os.path.exists(folder_name):
-            os.mkdir(folder_name)
+        os.mkdir(folder_name)
     try:
         # Confirm that the folder exists
         if os.path.exists(folder_path):
@@ -28,31 +26,20 @@ def format_folder(folder_path):
 
 app = FastAPI()
 
-@app.post("/process")
-async def process_video(
-    source: UploadFile = File(...),
-    target: UploadFile = File(...),
-    output: str = "output.mp4",
-    IsVideo: bool = True,
-    frame_processors: str = "face_swapper",
-    similar_face_distance: float = 0.85,    
-    reference_face_position: int = 0
+async def run_video_processing(
+    source_path,
+    target_path,
+    output_path,
+    frame_processors,
+    reference_face_position,
+    similar_face_distance,
 ):
-
-    format_folder('./temp')
-    # Save uploaded files temporarily
-    source_path = f"temp/source{os.path.splitext(source.filename)[1]}"
-    target_path = f"temp/target{os.path.splitext(target.filename)[1]}"
-    with open(source_path, "wb") as s, open(target_path, "wb") as t:
-        s.write(source.file.read())
-        t.write(target.file.read())
-
     # Construct the command
     command = [
         "python", "run.py",
         "-s", source_path,
         "-t", target_path,
-        "-o", "temp/"+output,
+        "-o", output_path,
         "--frame-processor", frame_processors,
         "--reference-face-position", str(reference_face_position),
         "--similar-face-distance", str(similar_face_distance)
@@ -66,10 +53,42 @@ async def process_video(
     except subprocess.CalledProcessError as e:
         return {"error": "Processing failed"}
 
-    outputfile = "temp/" + output
+@app.post("/process")
+async def process_video(
+    source: UploadFile = File(...),
+    target: UploadFile = File(...),
+    output: str = "output.mp4",
+    IsVideo: bool = True,
+    frame_processors: str = "face_swapper",
+    similar_face_distance: float = 0.85,
+    reference_face_position: int = 0,
+    background_tasks: BackgroundTasks,
+):
+
+    format_folder('./temp')
+    # Save uploaded files temporarily
+    source_path = f"temp/source{os.path.splitext(source.filename)[1]}"
+    target_path = f"temp/target{os.path.splitext(target.filename)[1]}"
+    output_path = f"temp/{output}"
+
+    with open(source_path, "wb") as s, open(target_path, "wb") as t:
+        s.write(source.file.read())
+        t.write(target.file.read())
+
+    # Start the video processing in the background
+    background_tasks.add_task(
+        run_video_processing,
+        source_path,
+        target_path,
+        output_path,
+        frame_processors,
+        reference_face_position,
+        similar_face_distance,
+    )
+
     if IsVideo:
-        # Return the generated video file for download
-        return FileResponse(outputfile, media_type="video/mp4")
+        # Return a response indicating that processing has started
+        return {"message": "Processing video. Result will be available shortly."}
     else:
-        # Return the generated image file for download
-        return FileResponse(outputfile, media_type="image/jpeg")
+        # Return a response indicating that processing has started
+        return {"message": "Processing image. Result will be available shortly."}
