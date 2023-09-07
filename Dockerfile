@@ -16,6 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code into the container
 COPY . .
 
+RUN wget -P ./models https://huggingface.co/ezioruan/inswapper_128.onnx/resolve/main/inswapper_128.onnx
+
 # Expose the port that your FastAPI app will run on
 EXPOSE 8000
 
