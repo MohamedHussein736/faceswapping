@@ -6,6 +6,9 @@ import os
 
 
 def format_folder(folder_path):
+    folder_name = 'temp'
+    if not os.path.exists(folder_name):
+            os.mkdir(folder_name)
     try:
         # Confirm that the folder exists
         if os.path.exists(folder_path):
